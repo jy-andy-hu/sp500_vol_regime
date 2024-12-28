@@ -1,0 +1,339 @@
+---
+title: "S&P 500 Volatility Clusters"
+date: 2024-12-17
+author: Jianyuan(Andy) Hu
+
+format: 
+    html:
+        theme: cosmo
+        highlight-style: arrow
+        page-layout: full
+        toc: true
+        toc-location: left
+        toc-depth: 3
+        code-fold: show
+        code-overflow: wrap
+        code-tools: 
+            source: repo
+            toggle: true
+        repo-url: https://github.com/jy-andy-hu/sp500_vol_regime
+        repo-branch: main
+        repo-actions: issue
+
+execute: 
+  warning: false
+  error: false
+---
+
+## Project
+
+**Goal:** Use the broad stock index to model and understand the index volatility levels.
+
+**Key methodology:** Use KMeans to build clustering model and then volatility regimes and then build transitional probability distribution among the regimes
+
+## Import Library    
+
+```{python}
+import pyprojroot
+from pyprojroot.here import here
+import os
+
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import ibis
+import ibis.selectors as s
+from ibis import _
+ibis.options.interactive = True
+ibis.options.repr.interactive.max_rows = 20
+
+from plotnine import ggplot, geom_line, geom_path, aes, facet_wrap, labs, scale_x_continuous, theme, element_text, scale_y_continuous, scale_x_date, scale_color_manual
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import MinMaxScaler
+
+
+```
+
+## Project File Paths
+```{python}
+base_path = pyprojroot.find_root(pyprojroot.has_file('.here'))
+output_dir = os.path.join(base_path, "Data", "out")
+```
+
+## Import Data
+
+Get a list of S&P 500 price index daily
+
+```{python}
+# Define the ticker symbol for the S&P 500 index
+ticker = '^GSPC'
+
+# Define the start and end dates
+start_date = '2013-01-01'
+end_date = '2024-12-26'
+
+# Fetch the historical data
+sp500_data = yf.download(ticker, start=start_date, end=end_date, multi_level_index=False).reset_index()
+
+# Display the data
+sp500_data.head(10)
+```
+
+Clean data with ibis framework. We only need to keep Date and Close columns. Since data is downloaded live, we also archive a copy of data. 
+
+It is totally okay to use Pandas to clean the data. It's just a personal preference that I prefer the modernized and portable syntax of ibis framework.
+
+
+```{python}
+# import to duckdb backend of ibis framework
+sp500_data_ibis = ibis.memtable(data=sp500_data)
+
+sp500_data_cleaned = (
+    sp500_data_ibis.select("Date", "Close")
+        .mutate(Date = _.Date.date(), Close = _.Close.round(digits = 2))
+)
+# export a csv copy
+sp500_data_cleaned.to_csv(path = os.path.join(output_dir, "sp500_close.csv")) 
+
+# preview of data
+sp500_data_cleaned
+```
+
+## Calculate Moving Average and Volatility
+
+```{python}
+return_window = ibis.window(preceding=30, following=0, order_by="Date")
+
+sp500_data_transformed = (sp500_data_cleaned.mutate(Previous_Close = _.Close.lag())
+    .mutate(Daily_Return = ((_.Close - _.Previous_Close)/_.Previous_Close).round(digits = 6))
+    .mutate(thirty_day_vol = ibis.ifelse(
+        _.Daily_Return.count().over(return_window) >= 30, 
+        _.Daily_Return.std().over(return_window).round(digits = 6), 
+        None))
+)
+
+sp500_vol_no_null = sp500_data_transformed.filter(_.thirty_day_vol != None)
+sp500_vol_dates = sp500_vol_no_null.select("Date").mutate(index = ibis.row_number())
+sp500_vol = sp500_vol_no_null.select("thirty_day_vol")
+
+# bring to pandas dataframes to be more compatible with sklearn APIs
+sp500_vol_pd = sp500_vol.to_pandas()
+```
+
+## Train KMeans Model
+
+### Find the Optimal K, using elbow method
+
+In the following "elbow charts", trade off between inertia and silhouette scores, we settle at 9 clusters, as it gives a relatively high silhouette scores whil keeping a relatively low inertia.
+
+```{python}
+def find_best_k_for_kmeans_clustering(dataframe, scaler, kmin, kmax,  random_state=42, figheight=8, figwidth=10):
+    scalermethod = scaler;
+    dataframe_scaled = pd.DataFrame(data=scaler.fit_transform(dataframe[dataframe.columns]), columns=dataframe.columns);
+    from sklearn.metrics import silhouette_score, silhouette_samples;
+    inertias = {}
+    silhouettes = {}
+    for k in range(kmin, kmax):
+        kmeans = KMeans(n_clusters=k, random_state=random_state).fit(dataframe_scaled)
+        inertias[k] = kmeans.inertia_
+        silhouettes[k] = silhouette_score(dataframe_scaled, kmeans.labels_, metric='euclidean')
+    inertias_df = ibis.memtable(list(inertias.items()), columns=["cluster", "inertia"])
+    silhouettes_df = ibis.memtable(list(silhouettes.items()), columns=["cluster", "silhouettes"])
+    metrics_df = inertias_df.left_join(silhouettes_df, "cluster").select(~s.contains("_right"))
+    return metrics_df
+
+kmeans_metrics_df = find_best_k_for_kmeans_clustering(sp500_vol_pd, scaler=MinMaxScaler(), kmin=3, kmax=15)
+
+kmeans_metrics_df
+```
+
+Create "elbow chart" for inertia (sum of squared distances within each cluster). 
+
+We are looking for the number of clusters that yield the relatively lower "turning" of the line.
+```{python}
+(
+    ggplot(kmeans_metrics_df, aes("cluster", "inertia"))
+    + geom_line()
+    + scale_x_continuous(breaks=range(3,15))
+    + labs(
+        x="Number of clusters, K",
+        y="Inertia",
+        title="K-Means, Elbow Method")
+)
+```
+
+Create "elbow chart" for silhouette scores (measuring separation among clusters).
+
+We are looking for the number of clusters that yield the relatively higher "turning" of the line.
+```{python}
+(
+    ggplot()
+    + geom_line(kmeans_metrics_df, aes("cluster", "silhouettes"))
+    + scale_x_continuous(breaks=range(3,15))
+    + labs(
+        x="Number of clusters, K",
+        y="silhouettes",
+        title="K-Means, Elbow Method")
+)
+```
+
+Based on the outputs and criteria, it seems 8 clusters are appropriate. 
+
+### Train the Optimal KMeans Model and Cluster Volatility
+
+Train the optimal KMeans model and predict the cluster label and then cluster volatilities into 9 different clusters. 
+```{python}
+def predict_cluster_with_kmeans(dataframe, optimal_k, scaler, Random_State=42):
+    from sklearn.cluster import KMeans;
+    kmeans = KMeans(n_clusters=optimal_k, random_state=Random_State);
+    dataframe_scaled = pd.DataFrame(data=scaler.fit_transform(dataframe[dataframe.columns]), columns=dataframe.columns);
+    dataframe['cluster'] = kmeans.fit_predict(dataframe_scaled)
+    return dataframe
+
+sp500_vol_pred = predict_cluster_with_kmeans(dataframe=sp500_vol_pd, optimal_k=8, scaler=MinMaxScaler())
+
+sp500_vol_pred.head(10)
+```
+
+View the descriptive stats on each cluster.
+
+```{python}
+sp500_vol_pred = (
+    ibis.memtable(data=sp500_vol_pred)
+    # adding the dates back to the volatility dataset
+        .mutate(index = ibis.row_number())
+        .left_join(sp500_vol_dates, "index")
+        .select(~s.startswith("index"))
+)
+
+(
+    sp500_vol_pred.aggregate(
+            by = "cluster",
+            count = _.thirty_day_vol.count(), 
+            mean = _.thirty_day_vol.mean(),
+            max =  _.thirty_day_vol.max(),
+            median = _.thirty_day_vol.median(), 
+            min = _.thirty_day_vol.min())
+        .order_by(_.cluster)
+)
+```
+
+Create the bridging table to relabel clusters. 
+
+Relabel the cluster in ascending order of mean volatility of each regime
+
+This is used to create the transitional probability table later.
+
+```{python}
+sp500_vol_pred_cluster_bridge = (
+    sp500_vol_pred.aggregate(
+        by = _.cluster, 
+        cluster_mean_vol = _.thirty_day_vol.mean())
+        .order_by(_.cluster_mean_vol)
+        .mutate(cluster_new = ibis.row_number())
+)
+
+sp500_vol_pred_relabelled = (
+    sp500_vol_pred.left_join(sp500_vol_pred_cluster_bridge, _.cluster == sp500_vol_pred_cluster_bridge.cluster)
+        .drop(["cluster", "cluster_right"])
+        .rename(cluster = "cluster_new")
+)
+
+sp500_vol_pred_relabelled
+```
+
+Review the key volatility stats based on final clusters:
+
+```{python}
+sp500_vol_pred_relabelled_summary = (
+    sp500_vol_pred_relabelled.aggregate(
+            by = "cluster",
+            count = _.thirty_day_vol.count(), 
+            mean = _.thirty_day_vol.mean(),
+            max =  _.thirty_day_vol.max(),
+            median = _.thirty_day_vol.median(), 
+            min = _.thirty_day_vol.min())
+        .order_by(_.cluster)
+)
+
+sp500_vol_pred_relabelled_summary
+```
+
+### Plot the Regime vs Actual thirty_day_Vol
+
+In the following graph, you can see how actual 30-day volatility compares to (shaded in red) their major volatility cluster. 
+
+```{python}
+
+sp500_vol_pred_pivoted = (
+    sp500_vol_pred_relabelled.pivot_longer(col=["thirty_day_vol", "cluster_mean_vol"], names_to="Type", values_to="Volatility")
+    .order_by(_.Type, _.Date)
+)
+
+(
+    ggplot(sp500_vol_pred_pivoted, aes(x = "Date"))
+    + geom_line(aes(y = "Volatility", color = "Type", group = 1), stat = "identity")
+    + scale_color_manual(values=dict(thirty_day_vol = "blue", cluster_mean_vol = "red"))
+    + scale_x_date(date_breaks="3 month", date_labels="%Y-%m")
+    + labs(
+        x = "Date", 
+        y = "Volatility",
+        title="S&P500 Volatility Regime Transitions" )
+    + theme( 
+        figure_size=(20, 10),
+        legend_position='top',
+        axis_text_x=element_text(rotation=45, hjust=1) )
+)
+```
+
+## Calculate Transition Probability
+
+create cluster transitions counts dataframe
+
+```{python}
+sp500_vol_pred_shifted = (
+    sp500_vol_pred.select(cluster_from = "cluster")
+        .mutate(
+            cluster_from = _.cluster_from.cast("String"),
+            cluster_to = _.cluster_from.lead(1).cast("String"))
+        # remove NAs from lead()
+        .filter(_.cluster_to != None)
+)
+sp500_vol_pred_shifted
+```
+
+```{python}
+# get a frequecy of each cluster to calculate relative frequency of each transition type, see below
+sp500_cluster_vol_count = (
+    sp500_vol_pred.aggregate(
+                by = "cluster",
+                count = _.thirty_day_vol.count())
+    .mutate(cluster = _.cluster.cast("String"))
+)
+
+vol_transition_table = (
+        # perform crosstabbing between cluster_from and cluster_to to understand count of transitions 
+    sp500_vol_pred_shifted
+        .mutate(counter = 1)
+        .pivot_wider(names_from ="cluster_to", values_from="counter", values_agg="sum", values_fill=0, names_sort=True)
+        # add cluster frequency
+        .left_join(
+            right = sp500_cluster_vol_count, 
+            predicates= _.cluster_from == sp500_cluster_vol_count.cluster
+        )
+        # clean up data
+        .drop(_.cluster_from)
+        .order_by(_.cluster)
+        .relocate(_.cluster, before="0")
+)
+vol_transition_table
+```
+
+
+```{python}
+# calculate relative frequencies
+vol_transition_freq_table = vol_transition_table.mutate(s.across(s.numeric(), func = _ / vol_transition_table['count'])).drop("count")
+
+vol_transition_freq_table
+```

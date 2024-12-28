@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jianyuan(Andy) Hu">
+<meta name="dcterms.date" content="2024-12-17">
+
+<title>S&amp;P 500 Volatility Clusters</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="SP500_Vol_Clussters_files/libs/clipboard/clipboard.min.js"></script>
+<script src="SP500_Vol_Clussters_files/libs/quarto-html/quarto.js"></script>
+<script src="SP500_Vol_Clussters_files/libs/quarto-html/popper.min.js"></script>
+<script src="SP500_Vol_Clussters_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="SP500_Vol_Clussters_files/libs/quarto-html/anchor.min.js"></script>
+<link href="SP500_Vol_Clussters_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="SP500_Vol_Clussters_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="SP500_Vol_Clussters_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="SP500_Vol_Clussters_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="SP500_Vol_Clussters_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-full toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#project" id="toc-project" class="nav-link active" data-scroll-target="#project">Project</a></li>
+  <li><a href="#import-library" id="toc-import-library" class="nav-link" data-scroll-target="#import-library">Import Library</a></li>
+  <li><a href="#project-file-paths" id="toc-project-file-paths" class="nav-link" data-scroll-target="#project-file-paths">Project File Paths</a></li>
+  <li><a href="#import-data" id="toc-import-data" class="nav-link" data-scroll-target="#import-data">Import Data</a></li>
+  <li><a href="#calculate-moving-average-and-volatility" id="toc-calculate-moving-average-and-volatility" class="nav-link" data-scroll-target="#calculate-moving-average-and-volatility">Calculate Moving Average and Volatility</a></li>
+  <li><a href="#train-kmeans-model" id="toc-train-kmeans-model" class="nav-link" data-scroll-target="#train-kmeans-model">Train KMeans Model</a>
+  <ul class="collapse">
+  <li><a href="#find-the-optimal-k-using-elbow-method" id="toc-find-the-optimal-k-using-elbow-method" class="nav-link" data-scroll-target="#find-the-optimal-k-using-elbow-method">Find the Optimal K, using elbow method</a></li>
+  <li><a href="#train-the-optimal-kmeans-model-and-cluster-volatility" id="toc-train-the-optimal-kmeans-model-and-cluster-volatility" class="nav-link" data-scroll-target="#train-the-optimal-kmeans-model-and-cluster-volatility">Train the Optimal KMeans Model and Cluster Volatility</a></li>
+  <li><a href="#plot-the-regime-vs-actual-thirty_day_vol" id="toc-plot-the-regime-vs-actual-thirty_day_vol" class="nav-link" data-scroll-target="#plot-the-regime-vs-actual-thirty_day_vol">Plot the Regime vs Actual thirty_day_Vol</a></li>
+  </ul></li>
+  <li><a href="#calculate-transition-probability" id="toc-calculate-transition-probability" class="nav-link" data-scroll-target="#calculate-transition-probability">Calculate Transition Probability</a></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+</div>
+<main class="content column-page-right" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">S&amp;P 500 Volatility Clusters</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button" data-quarto-source-url="repo">View Source</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta column-page-right">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Jianyuan(Andy) Hu </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">December 17, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="project" class="level2">
+<h2 class="anchored" data-anchor-id="project">Project</h2>
+<p><strong>Goal:</strong> Use the broad stock index to model and understand the index volatility levels.</p>
+<p><strong>Key methodology:</strong> Use KMeans to build clustering model and then volatility regimes and then build transitional probability distribution among the regimes</p>
+</section>
+<section id="import-library" class="level2">
+<h2 class="anchored" data-anchor-id="import-library">Import Library</h2>
+<div id="133a00a5" class="cell" data-execution_count="1">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pyprojroot</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pyprojroot.here <span class="im">import</span> here</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> yfinance <span class="im">as</span> yf</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ibis</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ibis.selectors <span class="im">as</span> s</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ibis <span class="im">import</span> _</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>ibis.options.interactive <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>ibis.options.<span class="bu">repr</span>.interactive.max_rows <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> plotnine <span class="im">import</span> ggplot, geom_line, geom_path, aes, facet_wrap, labs, scale_x_continuous, theme, element_text, scale_y_continuous, scale_x_date, scale_color_manual</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.cluster <span class="im">import</span> KMeans</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.preprocessing <span class="im">import</span> MinMaxScaler</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="project-file-paths" class="level2">
+<h2 class="anchored" data-anchor-id="project-file-paths">Project File Paths</h2>
+<div id="ff1a73a6" class="cell" data-execution_count="2">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>base_path <span class="op">=</span> pyprojroot.find_root(pyprojroot.has_file(<span class="st">'.here'</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>output_dir <span class="op">=</span> os.path.join(base_path, <span class="st">"Data"</span>, <span class="st">"out"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="import-data" class="level2">
+<h2 class="anchored" data-anchor-id="import-data">Import Data</h2>
+<p>Get a list of S&amp;P 500 price index daily</p>
+<div id="9e6ddb7f" class="cell" data-execution_count="3">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the ticker symbol for the S&amp;P 500 index</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>ticker <span class="op">=</span> <span class="st">'^GSPC'</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the start and end dates</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>start_date <span class="op">=</span> <span class="st">'2013-01-01'</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>end_date <span class="op">=</span> <span class="st">'2024-12-26'</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Fetch the historical data</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>sp500_data <span class="op">=</span> yf.download(ticker, start<span class="op">=</span>start_date, end<span class="op">=</span>end_date, multi_level_index<span class="op">=</span><span class="va">False</span>).reset_index()</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Display the data</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>sp500_data.head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="35">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Date</th>
+<th data-quarto-table-cell-role="th">Close</th>
+<th data-quarto-table-cell-role="th">High</th>
+<th data-quarto-table-cell-role="th">Low</th>
+<th data-quarto-table-cell-role="th">Open</th>
+<th data-quarto-table-cell-role="th">Volume</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>2013-01-02</td>
+<td>1462.420044</td>
+<td>1462.430054</td>
+<td>1426.189941</td>
+<td>1426.189941</td>
+<td>4202600000</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>2013-01-03</td>
+<td>1459.369995</td>
+<td>1465.469971</td>
+<td>1455.530029</td>
+<td>1462.420044</td>
+<td>3829730000</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>2013-01-04</td>
+<td>1466.469971</td>
+<td>1467.939941</td>
+<td>1458.989990</td>
+<td>1459.369995</td>
+<td>3424290000</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>2013-01-07</td>
+<td>1461.890015</td>
+<td>1466.469971</td>
+<td>1456.619995</td>
+<td>1466.469971</td>
+<td>3304970000</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>2013-01-08</td>
+<td>1457.150024</td>
+<td>1461.890015</td>
+<td>1451.640015</td>
+<td>1461.890015</td>
+<td>3601600000</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>2013-01-09</td>
+<td>1461.020020</td>
+<td>1464.729980</td>
+<td>1457.150024</td>
+<td>1457.150024</td>
+<td>3674390000</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>2013-01-10</td>
+<td>1472.119995</td>
+<td>1472.300049</td>
+<td>1461.020020</td>
+<td>1461.020020</td>
+<td>4081840000</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>2013-01-11</td>
+<td>1472.050049</td>
+<td>1472.750000</td>
+<td>1467.579956</td>
+<td>1472.119995</td>
+<td>3340650000</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>2013-01-14</td>
+<td>1470.680054</td>
+<td>1472.050049</td>
+<td>1465.689941</td>
+<td>1472.050049</td>
+<td>3003010000</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>2013-01-15</td>
+<td>1472.339966</td>
+<td>1473.310059</td>
+<td>1463.760010</td>
+<td>1470.670044</td>
+<td>3135350000</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Clean data with ibis framework. We only need to keep Date and Close columns. Since data is downloaded live, we also archive a copy of data.</p>
+<p>It is totally okay to use Pandas to clean the data. It’s just a personal preference that I prefer the modernized and portable syntax of ibis framework.</p>
+<div id="e38a77be" class="cell" data-execution_count="4">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import to duckdb backend of ibis framework</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>sp500_data_ibis <span class="op">=</span> ibis.memtable(data<span class="op">=</span>sp500_data)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>sp500_data_cleaned <span class="op">=</span> (</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    sp500_data_ibis.select(<span class="st">"Date"</span>, <span class="st">"Close"</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        .mutate(Date <span class="op">=</span> _.Date.date(), Close <span class="op">=</span> _.Close.<span class="bu">round</span>(digits <span class="op">=</span> <span class="dv">2</span>))</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># export a csv copy</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>sp500_data_cleaned.to_csv(path <span class="op">=</span> os.path.join(output_dir, <span class="st">"sp500_close.csv"</span>)) </span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># preview of data</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>sp500_data_cleaned</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="36">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━┳━━━━━━━━━┓
+┃<span style="font-weight: bold"> Date       </span>┃<span style="font-weight: bold"> Close   </span>┃
+┡━━━━━━━━━━━━╇━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">date</span>       │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span> │
+├────────────┼─────────┤
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-02</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1462.42</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-03</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1459.37</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-04</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1466.47</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-07</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1461.89</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-08</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1457.15</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-09</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1461.02</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-10</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1472.12</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-11</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1472.05</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-14</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1470.68</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-15</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1472.34</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-16</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1472.63</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-17</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1480.94</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-18</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1485.98</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-22</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1492.56</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-23</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1494.81</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-24</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1494.82</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-25</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1502.96</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-28</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1500.18</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-29</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1507.84</span> │
+│ <span style="color: #800080; text-decoration-color: #800080">2013-01-30</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1501.96</span> │
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span>          │       <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span> │
+└────────────┴─────────┘
+</pre>
+</div>
+</div>
+</section>
+<section id="calculate-moving-average-and-volatility" class="level2">
+<h2 class="anchored" data-anchor-id="calculate-moving-average-and-volatility">Calculate Moving Average and Volatility</h2>
+<div id="cd9e8209" class="cell" data-execution_count="5">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>return_window <span class="op">=</span> ibis.window(preceding<span class="op">=</span><span class="dv">30</span>, following<span class="op">=</span><span class="dv">0</span>, order_by<span class="op">=</span><span class="st">"Date"</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>sp500_data_transformed <span class="op">=</span> (sp500_data_cleaned.mutate(Previous_Close <span class="op">=</span> _.Close.lag())</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    .mutate(Daily_Return <span class="op">=</span> ((_.Close <span class="op">-</span> _.Previous_Close)<span class="op">/</span>_.Previous_Close).<span class="bu">round</span>(digits <span class="op">=</span> <span class="dv">6</span>))</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    .mutate(thirty_day_vol <span class="op">=</span> ibis.ifelse(</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        _.Daily_Return.count().over(return_window) <span class="op">&gt;=</span> <span class="dv">30</span>, </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        _.Daily_Return.std().over(return_window).<span class="bu">round</span>(digits <span class="op">=</span> <span class="dv">6</span>), </span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">None</span>))</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>sp500_vol_no_null <span class="op">=</span> sp500_data_transformed.<span class="bu">filter</span>(_.thirty_day_vol <span class="op">!=</span> <span class="va">None</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>sp500_vol_dates <span class="op">=</span> sp500_vol_no_null.select(<span class="st">"Date"</span>).mutate(index <span class="op">=</span> ibis.row_number())</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>sp500_vol <span class="op">=</span> sp500_vol_no_null.select(<span class="st">"thirty_day_vol"</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co"># bring to pandas dataframes to be more compatible with sklearn APIs</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>sp500_vol_pd <span class="op">=</span> sp500_vol.to_pandas()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="train-kmeans-model" class="level2">
+<h2 class="anchored" data-anchor-id="train-kmeans-model">Train KMeans Model</h2>
+<section id="find-the-optimal-k-using-elbow-method" class="level3">
+<h3 class="anchored" data-anchor-id="find-the-optimal-k-using-elbow-method">Find the Optimal K, using elbow method</h3>
+<p>In the following “elbow charts”, trade off between inertia and silhouette scores, we settle at 9 clusters, as it gives a relatively high silhouette scores whil keeping a relatively low inertia.</p>
+<div id="b4aa19d6" class="cell" data-execution_count="6">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> find_best_k_for_kmeans_clustering(dataframe, scaler, kmin, kmax,  random_state<span class="op">=</span><span class="dv">42</span>, figheight<span class="op">=</span><span class="dv">8</span>, figwidth<span class="op">=</span><span class="dv">10</span>):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    scalermethod <span class="op">=</span> scaler<span class="op">;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    dataframe_scaled <span class="op">=</span> pd.DataFrame(data<span class="op">=</span>scaler.fit_transform(dataframe[dataframe.columns]), columns<span class="op">=</span>dataframe.columns)<span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> sklearn.metrics <span class="im">import</span> silhouette_score, silhouette_samples<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    inertias <span class="op">=</span> {}</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    silhouettes <span class="op">=</span> {}</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(kmin, kmax):</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        kmeans <span class="op">=</span> KMeans(n_clusters<span class="op">=</span>k, random_state<span class="op">=</span>random_state).fit(dataframe_scaled)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>        inertias[k] <span class="op">=</span> kmeans.inertia_</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>        silhouettes[k] <span class="op">=</span> silhouette_score(dataframe_scaled, kmeans.labels_, metric<span class="op">=</span><span class="st">'euclidean'</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    inertias_df <span class="op">=</span> ibis.memtable(<span class="bu">list</span>(inertias.items()), columns<span class="op">=</span>[<span class="st">"cluster"</span>, <span class="st">"inertia"</span>])</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    silhouettes_df <span class="op">=</span> ibis.memtable(<span class="bu">list</span>(silhouettes.items()), columns<span class="op">=</span>[<span class="st">"cluster"</span>, <span class="st">"silhouettes"</span>])</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    metrics_df <span class="op">=</span> inertias_df.left_join(silhouettes_df, <span class="st">"cluster"</span>).select(<span class="op">~</span>s.contains(<span class="st">"_right"</span>))</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> metrics_df</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>kmeans_metrics_df <span class="op">=</span> find_best_k_for_kmeans_clustering(sp500_vol_pd, scaler<span class="op">=</span>MinMaxScaler(), kmin<span class="op">=</span><span class="dv">3</span>, kmax<span class="op">=</span><span class="dv">15</span>)</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>kmeans_metrics_df</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="38">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> cluster </span>┃<span style="font-weight: bold"> inertia  </span>┃<span style="font-weight: bold"> silhouettes </span>┃
+┡━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span>   │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>     │
+├─────────┼──────────┼─────────────┤
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5.694822</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.651185</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4.690729</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.648749</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2.682729</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.540790</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">6</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1.579715</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.553520</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">7</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1.086568</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.571062</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">8</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.837567</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.578115</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">9</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.681040</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.581327</span> │
+│      <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">10</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.605977</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.576432</span> │
+│      <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">11</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.470595</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.577266</span> │
+│      <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">12</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.401481</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.536613</span> │
+│      <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">13</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.325140</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.533363</span> │
+│      <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">14</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.263371</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.545676</span> │
+└─────────┴──────────┴─────────────┘
+</pre>
+</div>
+</div>
+<p>Create “elbow chart” for inertia (sum of squared distances within each cluster).</p>
+<p>We are looking for the number of clusters that yield the relatively lower “turning” of the line.</p>
+<div id="f77cf925" class="cell" data-execution_count="7">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    ggplot(kmeans_metrics_df, aes(<span class="st">"cluster"</span>, <span class="st">"inertia"</span>))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> geom_line()</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> scale_x_continuous(breaks<span class="op">=</span><span class="bu">range</span>(<span class="dv">3</span>,<span class="dv">15</span>))</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> labs(</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        x<span class="op">=</span><span class="st">"Number of clusters, K"</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        y<span class="op">=</span><span class="st">"Inertia"</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        title<span class="op">=</span><span class="st">"K-Means, Elbow Method"</span>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="SP500_Vol_Clussters_files/figure-html/cell-8-output-1.png" width="672" height="480" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Create “elbow chart” for silhouette scores (measuring separation among clusters).</p>
+<p>We are looking for the number of clusters that yield the relatively higher “turning” of the line.</p>
+<div id="b59f27ef" class="cell" data-execution_count="8">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    ggplot()</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> geom_line(kmeans_metrics_df, aes(<span class="st">"cluster"</span>, <span class="st">"silhouettes"</span>))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> scale_x_continuous(breaks<span class="op">=</span><span class="bu">range</span>(<span class="dv">3</span>,<span class="dv">15</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> labs(</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>        x<span class="op">=</span><span class="st">"Number of clusters, K"</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        y<span class="op">=</span><span class="st">"silhouettes"</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        title<span class="op">=</span><span class="st">"K-Means, Elbow Method"</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="SP500_Vol_Clussters_files/figure-html/cell-9-output-1.png" width="672" height="480" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Based on the outputs and criteria, it seems 8 clusters are appropriate.</p>
+</section>
+<section id="train-the-optimal-kmeans-model-and-cluster-volatility" class="level3">
+<h3 class="anchored" data-anchor-id="train-the-optimal-kmeans-model-and-cluster-volatility">Train the Optimal KMeans Model and Cluster Volatility</h3>
+<p>Train the optimal KMeans model and predict the cluster label and then cluster volatilities into 9 different clusters.</p>
+<div id="cd825def" class="cell" data-execution_count="9">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> predict_cluster_with_kmeans(dataframe, optimal_k, scaler, Random_State<span class="op">=</span><span class="dv">42</span>):</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="im">from</span> sklearn.cluster <span class="im">import</span> KMeans<span class="op">;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    kmeans <span class="op">=</span> KMeans(n_clusters<span class="op">=</span>optimal_k, random_state<span class="op">=</span>Random_State)<span class="op">;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    dataframe_scaled <span class="op">=</span> pd.DataFrame(data<span class="op">=</span>scaler.fit_transform(dataframe[dataframe.columns]), columns<span class="op">=</span>dataframe.columns)<span class="op">;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    dataframe[<span class="st">'cluster'</span>] <span class="op">=</span> kmeans.fit_predict(dataframe_scaled)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> dataframe</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred <span class="op">=</span> predict_cluster_with_kmeans(dataframe<span class="op">=</span>sp500_vol_pd, optimal_k<span class="op">=</span><span class="dv">8</span>, scaler<span class="op">=</span>MinMaxScaler())</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred.head(<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="41">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">thirty_day_vol</th>
+<th data-quarto-table-cell-role="th">cluster</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>0.004513</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>0.004457</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>0.004543</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>0.005142</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>0.005258</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>0.005384</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>0.006422</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>0.006374</td>
+<td>6</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>0.006736</td>
+<td>6</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>0.006735</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>View the descriptive stats on each cluster.</p>
+<div id="cd8cf5e2" class="cell" data-execution_count="10">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred <span class="op">=</span> (</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    ibis.memtable(data<span class="op">=</span>sp500_vol_pred)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># adding the dates back to the volatility dataset</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        .mutate(index <span class="op">=</span> ibis.row_number())</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        .left_join(sp500_vol_dates, <span class="st">"index"</span>)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        .select(<span class="op">~</span>s.startswith(<span class="st">"index"</span>))</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>(</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred.aggregate(</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>            by <span class="op">=</span> <span class="st">"cluster"</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>            count <span class="op">=</span> _.thirty_day_vol.count(), </span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>            mean <span class="op">=</span> _.thirty_day_vol.mean(),</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>            <span class="bu">max</span> <span class="op">=</span>  _.thirty_day_vol.<span class="bu">max</span>(),</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>            median <span class="op">=</span> _.thirty_day_vol.median(), </span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>            <span class="bu">min</span> <span class="op">=</span> _.thirty_day_vol.<span class="bu">min</span>())</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>        .order_by(_.cluster)</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="42">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
+┃<span style="font-weight: bold"> cluster </span>┃<span style="font-weight: bold"> count </span>┃<span style="font-weight: bold"> mean     </span>┃<span style="font-weight: bold"> max      </span>┃<span style="font-weight: bold"> median   </span>┃<span style="font-weight: bold"> min      </span>┃
+┡━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int32</span>   │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │
+├─────────┼───────┼──────────┼──────────┼──────────┼──────────┤
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">517</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005327</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004471</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.002251</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">349</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.013144</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015148</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.013046</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.011789</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">31</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.048867</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.052927</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.050229</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.041277</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">704</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007931</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.009160</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007856</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007118</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">14</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.029730</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.035864</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.030857</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.023744</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">229</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.017168</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.023409</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.016761</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015194</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">6</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">732</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007115</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006308</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005332</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">7</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">410</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.010369</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.011763</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.010353</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.009173</span> │
+└─────────┴───────┴──────────┴──────────┴──────────┴──────────┘
+</pre>
+</div>
+</div>
+<p>Create the bridging table to relabel clusters.</p>
+<p>Relabel the cluster in ascending order of mean volatility of each regime</p>
+<p>This is used to create the transitional probability table later.</p>
+<div id="258cd0a0" class="cell" data-execution_count="11">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_cluster_bridge <span class="op">=</span> (</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred.aggregate(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        by <span class="op">=</span> _.cluster, </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        cluster_mean_vol <span class="op">=</span> _.thirty_day_vol.mean())</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        .order_by(_.cluster_mean_vol)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        .mutate(cluster_new <span class="op">=</span> ibis.row_number())</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_relabelled <span class="op">=</span> (</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred.left_join(sp500_vol_pred_cluster_bridge, _.cluster <span class="op">==</span> sp500_vol_pred_cluster_bridge.cluster)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>        .drop([<span class="st">"cluster"</span>, <span class="st">"cluster_right"</span>])</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>        .rename(cluster <span class="op">=</span> <span class="st">"cluster_new"</span>)</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_relabelled</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="43">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃<span style="font-weight: bold"> thirty_day_vol </span>┃<span style="font-weight: bold"> Date       </span>┃<span style="font-weight: bold"> cluster_mean_vol </span>┃<span style="font-weight: bold"> cluster </span>┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>        │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">date</span>       │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>          │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span>   │
+├────────────────┼────────────┼──────────────────┼─────────┤
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004513</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-14</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004457</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-15</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004543</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-19</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005142</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-20</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005258</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-21</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005384</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-22</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006422</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-25</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006374</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-26</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006736</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-27</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006735</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-02-28</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006740</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-01</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006768</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-04</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006891</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-05</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006879</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-06</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006855</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-07</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006881</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-08</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006887</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-11</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006874</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-12</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006853</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-13</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006894</span> │ <span style="color: #800080; text-decoration-color: #800080">2013-03-18</span> │         <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │
+│              <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span>          │                <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span> │       <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span> │
+└────────────────┴────────────┴──────────────────┴─────────┘
+</pre>
+</div>
+</div>
+<p>Review the key volatility stats based on final clusters:</p>
+<div id="73b02cfb" class="cell" data-execution_count="12">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_relabelled_summary <span class="op">=</span> (</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred_relabelled.aggregate(</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>            by <span class="op">=</span> <span class="st">"cluster"</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>            count <span class="op">=</span> _.thirty_day_vol.count(), </span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>            mean <span class="op">=</span> _.thirty_day_vol.mean(),</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>            <span class="bu">max</span> <span class="op">=</span>  _.thirty_day_vol.<span class="bu">max</span>(),</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>            median <span class="op">=</span> _.thirty_day_vol.median(), </span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>            <span class="bu">min</span> <span class="op">=</span> _.thirty_day_vol.<span class="bu">min</span>())</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        .order_by(_.cluster)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_relabelled_summary</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="44">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
+┃<span style="font-weight: bold"> cluster </span>┃<span style="font-weight: bold"> count </span>┃<span style="font-weight: bold"> mean     </span>┃<span style="font-weight: bold"> max      </span>┃<span style="font-weight: bold"> median   </span>┃<span style="font-weight: bold"> min      </span>┃
+┡━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span>   │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │
+├─────────┼───────┼──────────┼──────────┼──────────┼──────────┤
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">517</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004371</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005327</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004471</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.002251</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">732</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006277</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007115</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.006308</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005332</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">704</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007931</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.009160</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007856</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007118</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">410</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.010369</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.011763</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.010353</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.009173</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">349</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.013144</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015148</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.013046</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.011789</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">229</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.017168</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.023409</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.016761</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015194</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">6</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">14</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.029730</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.035864</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.030857</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.023744</span> │
+│       <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">7</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">31</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.048867</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.052927</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.050229</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.041277</span> │
+└─────────┴───────┴──────────┴──────────┴──────────┴──────────┘
+</pre>
+</div>
+</div>
+</section>
+<section id="plot-the-regime-vs-actual-thirty_day_vol" class="level3">
+<h3 class="anchored" data-anchor-id="plot-the-regime-vs-actual-thirty_day_vol">Plot the Regime vs Actual thirty_day_Vol</h3>
+<p>In the following graph, you can see how actual 30-day volatility compares to (shaded in red) their major volatility cluster.</p>
+<div id="0b2cd34e" class="cell" data-execution_count="13">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_pivoted <span class="op">=</span> (</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred_relabelled.pivot_longer(col<span class="op">=</span>[<span class="st">"thirty_day_vol"</span>, <span class="st">"cluster_mean_vol"</span>], names_to<span class="op">=</span><span class="st">"Type"</span>, values_to<span class="op">=</span><span class="st">"Volatility"</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    .order_by(_.Type, _.Date)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>(</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    ggplot(sp500_vol_pred_pivoted, aes(x <span class="op">=</span> <span class="st">"Date"</span>))</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> geom_line(aes(y <span class="op">=</span> <span class="st">"Volatility"</span>, color <span class="op">=</span> <span class="st">"Type"</span>, group <span class="op">=</span> <span class="dv">1</span>), stat <span class="op">=</span> <span class="st">"identity"</span>)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> scale_color_manual(values<span class="op">=</span><span class="bu">dict</span>(thirty_day_vol <span class="op">=</span> <span class="st">"blue"</span>, cluster_mean_vol <span class="op">=</span> <span class="st">"red"</span>))</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> scale_x_date(date_breaks<span class="op">=</span><span class="st">"3 month"</span>, date_labels<span class="op">=</span><span class="st">"%Y-%m"</span>)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> labs(</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> <span class="st">"Date"</span>, </span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>        y <span class="op">=</span> <span class="st">"Volatility"</span>,</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>        title<span class="op">=</span><span class="st">"S&amp;P500 Volatility Regime Transitions"</span> )</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> theme( </span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        figure_size<span class="op">=</span>(<span class="dv">20</span>, <span class="dv">10</span>),</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        legend_position<span class="op">=</span><span class="st">'top'</span>,</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>        axis_text_x<span class="op">=</span>element_text(rotation<span class="op">=</span><span class="dv">45</span>, hjust<span class="op">=</span><span class="dv">1</span>) )</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="SP500_Vol_Clussters_files/figure-html/cell-14-output-1.png" width="1920" height="960" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="calculate-transition-probability" class="level2">
+<h2 class="anchored" data-anchor-id="calculate-transition-probability">Calculate Transition Probability</h2>
+<p>create cluster transitions counts dataframe</p>
+<div id="19f83a8a" class="cell" data-execution_count="14">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_shifted <span class="op">=</span> (</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred.select(cluster_from <span class="op">=</span> <span class="st">"cluster"</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        .mutate(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>            cluster_from <span class="op">=</span> _.cluster_from.cast(<span class="st">"String"</span>),</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            cluster_to <span class="op">=</span> _.cluster_from.lead(<span class="dv">1</span>).cast(<span class="st">"String"</span>))</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># remove NAs from lead()</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        .<span class="bu">filter</span>(_.cluster_to <span class="op">!=</span> <span class="va">None</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>sp500_vol_pred_shifted</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="46">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃<span style="font-weight: bold"> cluster_from </span>┃<span style="font-weight: bold"> cluster_to </span>┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">string</span>       │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">string</span>     │
+├──────────────┼────────────┤
+│ <span style="color: #008000; text-decoration-color: #008000">0           </span> │ <span style="color: #008000; text-decoration-color: #008000">0         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">0           </span> │ <span style="color: #008000; text-decoration-color: #008000">0         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">0           </span> │ <span style="color: #008000; text-decoration-color: #008000">0         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">0           </span> │ <span style="color: #008000; text-decoration-color: #008000">0         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">0           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6           </span> │ <span style="color: #008000; text-decoration-color: #008000">6         </span> │
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span>            │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">…</span>          │
+└──────────────┴────────────┘
+</pre>
+</div>
+</div>
+<div id="b326ab4b" class="cell" data-execution_count="15">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get a frequecy of each cluster to calculate relative frequency of each transition type, see below</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>sp500_cluster_vol_count <span class="op">=</span> (</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred.aggregate(</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                by <span class="op">=</span> <span class="st">"cluster"</span>,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>                count <span class="op">=</span> _.thirty_day_vol.count())</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    .mutate(cluster <span class="op">=</span> _.cluster.cast(<span class="st">"String"</span>))</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>vol_transition_table <span class="op">=</span> (</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>        <span class="co"># perform crosstabbing between cluster_from and cluster_to to understand count of transitions </span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>    sp500_vol_pred_shifted</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>        .mutate(counter <span class="op">=</span> <span class="dv">1</span>)</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>        .pivot_wider(names_from <span class="op">=</span><span class="st">"cluster_to"</span>, values_from<span class="op">=</span><span class="st">"counter"</span>, values_agg<span class="op">=</span><span class="st">"sum"</span>, values_fill<span class="op">=</span><span class="dv">0</span>, names_sort<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>        <span class="co"># add cluster frequency</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>        .left_join(</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>            right <span class="op">=</span> sp500_cluster_vol_count, </span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>            predicates<span class="op">=</span> _.cluster_from <span class="op">==</span> sp500_cluster_vol_count.cluster</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>        <span class="co"># clean up data</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>        .drop(_.cluster_from)</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>        .order_by(_.cluster)</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>        .relocate(_.cluster, before<span class="op">=</span><span class="st">"0"</span>)</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>vol_transition_table</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="47">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃<span style="font-weight: bold"> cluster </span>┃<span style="font-weight: bold"> 0     </span>┃<span style="font-weight: bold"> 1     </span>┃<span style="font-weight: bold"> 2     </span>┃<span style="font-weight: bold"> 3     </span>┃<span style="font-weight: bold"> 4     </span>┃<span style="font-weight: bold"> 5     </span>┃<span style="font-weight: bold"> 6     </span>┃<span style="font-weight: bold"> 7     </span>┃<span style="font-weight: bold"> count </span>┃
+┡━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">string</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">int64</span> │
+├─────────┼───────┼───────┼───────┼───────┼───────┼───────┼───────┼───────┼───────┤
+│ <span style="color: #008000; text-decoration-color: #008000">0      </span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">466</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">8</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">32</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">517</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">1      </span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">300</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">15</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">23</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">349</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">2      </span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">29</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">31</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">3      </span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">11</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">586</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">73</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">26</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">704</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">4      </span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">11</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">14</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">5      </span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">14</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">4</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">203</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">5</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">229</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6      </span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">35</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">70</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">614</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">9</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">732</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">7      </span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">24</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │    <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">32</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span> │     <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">7</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">342</span> │   <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">410</span> │
+└─────────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┘
+</pre>
+</div>
+</div>
+<div id="c9f130a9" class="cell" data-execution_count="16">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate relative frequencies</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>vol_transition_freq_table <span class="op">=</span> vol_transition_table.mutate(s.across(s.numeric(), func <span class="op">=</span> _ <span class="op">/</span> vol_transition_table[<span class="st">'count'</span>])).drop(<span class="st">"count"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>vol_transition_freq_table</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display" data-execution_count="48">
+<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">┏━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
+┃<span style="font-weight: bold"> cluster </span>┃<span style="font-weight: bold"> 0        </span>┃<span style="font-weight: bold"> 1        </span>┃<span style="font-weight: bold"> 2        </span>┃<span style="font-weight: bold"> 3        </span>┃<span style="font-weight: bold"> 4        </span>┃<span style="font-weight: bold"> 5        </span>┃<span style="font-weight: bold"> 6        </span>┃<span style="font-weight: bold"> 7        </span>┃
+┡━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━┩
+│ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">string</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │ <span style="color: #7f7f7f; text-decoration-color: #7f7f7f">float64</span>  │
+├─────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│ <span style="color: #008000; text-decoration-color: #008000">0      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.901354</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.009671</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015474</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.003868</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.061896</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007737</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">1      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.005731</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.859599</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.011461</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.042980</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.014327</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.065903</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">2      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.935484</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.032258</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.032258</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">3      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.015625</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007102</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.832386</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.001420</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.001420</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.103693</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.036932</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">4      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.071429</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.785714</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.071429</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.071429</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">5      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.061135</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004367</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.017467</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004367</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.886463</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004367</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.021834</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">6      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.047814</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.001366</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.095628</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004098</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.838798</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.012295</span> │
+│ <span style="color: #008000; text-decoration-color: #008000">7      </span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.004878</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.058537</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.078049</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.000000</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.007317</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.017073</span> │ <span style="color: #008080; text-decoration-color: #008080; font-weight: bold">0.834146</span> │
+└─────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+</pre>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+  const viewSource = window.document.getElementById('quarto-view-source') ||
+                     window.document.getElementById('quarto-code-tools-source');
+  if (viewSource) {
+    const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+    viewSource.addEventListener("click", function(e) {
+      if (sourceUrl) {
+        // rstudio viewer pane
+        if (/\bcapabilities=\b/.test(window.location)) {
+          window.open(sourceUrl);
+        } else {
+          window.location.href = sourceUrl;
+        }
+      } else {
+        const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+        modal.show();
+      }
+      return false;
+    });
+  }
+  function toggleCodeHandler(show) {
+    return function(e) {
+      const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+      for (let i=0; i<detailsSrc.length; i++) {
+        const details = detailsSrc[i].parentElement;
+        if (show) {
+          details.open = true;
+        } else {
+          details.removeAttribute("open");
+        }
+      }
+      const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+      const fromCls = show ? "hidden" : "unhidden";
+      const toCls = show ? "unhidden" : "hidden";
+      for (let i=0; i<cellCodeDivs.length; i++) {
+        const codeDiv = cellCodeDivs[i];
+        if (codeDiv.classList.contains(fromCls)) {
+          codeDiv.classList.remove(fromCls);
+          codeDiv.classList.add(toCls);
+        } 
+      }
+      return false;
+    }
+  }
+  const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+  if (hideAllCode) {
+    hideAllCode.addEventListener("click", toggleCodeHandler(false));
+  }
+  const showAllCode = window.document.getElementById("quarto-show-all-code");
+  if (showAllCode) {
+    showAllCode.addEventListener("click", toggleCodeHandler(true));
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
