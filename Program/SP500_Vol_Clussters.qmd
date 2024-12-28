@@ -2,27 +2,6 @@
 title: "S&P 500 Volatility Clusters"
 date: 2024-12-17
 author: Jianyuan(Andy) Hu
-
-format: 
-    html:
-        theme: cosmo
-        highlight-style: arrow
-        page-layout: full
-        toc: true
-        toc-location: left
-        toc-depth: 3
-        code-fold: show
-        code-overflow: wrap
-        code-tools: 
-            source: repo
-            toggle: true
-        repo-url: https://github.com/jy-andy-hu/sp500_vol_regime
-        repo-branch: main
-        repo-actions: issue
-
-execute: 
-  warning: false
-  error: false
 ---
 
 ## Project
